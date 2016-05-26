@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+import soundcloud
+from clize import clize, run
+from subprocess import call
+
+genres = [
+    'all-music', 'all-audio', 'alternativerock', 'ambient', 'classical',
+    'country', 'danceedm', 'dancehall', 'deephouse', 'disco', 'drumbass',
+    'dubstep', 'electronic', 'folksingersongwriter', 'hiphoprap', 'house',
+    'indie', 'jazzblues', 'latin', 'metal', 'piano', 'pop', 'rbsoul', 'reggae',
+    'reggaeton', 'rock', 'soundtrack', 'techno', 'trance', 'trap', 'triphop',
+    'world', 'audiobooks', 'business', 'comedy', 'entertainment', 'learning',
+    'newspolitics', 'religionspirituality', 'science', 'sports',
+    'storytelling', 'technology'
+]
+
+
+@clize
+def sc_load(
+        tracks='', likes='', tags='', group='', playlists='',
+        top='', trending='', soundcloud_id='', mpd='localhost', n=50):
+    opts = dict(limit=n)
+    if likes:
+        method = 'favorites'
+    elif tracks or group:
+        method = 'tracks'
+    elif tags:
+        method = 'tracks'
+        opts = {'tags': tags}
+    elif playlists:
+        method = 'playlists'
+
+    client = soundcloud.Client(
+        client_id=soundcloud_id,
+        host='api-v2.soundcloud.com')
+
+    if top or trending:
+        genre = (top or trending)
+        if genre not in genres:
+            print('Genre must be one of %s' % ', '.join(genres))
+            return
+        response = client.get(
+            '/charts', kind='top' if top else'trending',
+            genre='soundcloud:genres:%s' % genre, **opts)
+        sounds = [
+            track.track for track in response.collection]
+    else:
+        if likes or tracks or playlists:
+            user = likes or tracks or playlists
+            track = client.get(
+                '/resolve', url='https://soundcloud.com/' + user)
+            user_id = track.id
+            url = '/users/%d/' % user_id
+        elif group:
+            track = client.get(
+                '/resolve', url='https://soundcloud.com/groups/' + group)
+            group_id = track.id
+            url = '/groups/%d/' % group_id
+        elif tags:
+            url = '/'
+        end = '%s%s' % (url, method)
+        response = client.get(end, **opts)
+        sounds = [
+            sound.obj for sound in response.collection
+        ]
+
+    for i, sound in enumerate(sounds):
+        print("%d Loading %s..." % (i, sound['title']))
+        call(['mpc', '-h', mpd, 'load',
+              'soundcloud://url/%s' % sound['permalink_url']])
+
+if __name__ == '__main__':
+    run(sc_load)
