@@ -18,7 +18,17 @@ genres = [
 @clize
 def sc_load(
         tracks='', likes='', tags='', group='', playlists='',
-        top='', trending='', soundcloud_id='', mpd='localhost', n=50):
+        top='', trending='', soundcloud_id='', mpd='localhost', n=50, *args):
+
+    def load(sounds):
+        for i, sound in enumerate(sounds):
+            print("%d Loading %s..." % (i, sound['title']))
+            call(['mpc', '-h', mpd, 'load',
+                  'soundcloud://url/%s' % sound['permalink_url']])
+    if args:
+        load([{'title': url, 'permalink_url': url} for url in args])
+        return
+
     opts = dict(limit=n)
     if likes:
         method = 'favorites'
@@ -42,32 +52,29 @@ def sc_load(
         response = client.get(
             '/charts', kind='top' if top else'trending',
             genre='soundcloud:genres:%s' % genre, **opts)
-        sounds = [
-            track.track for track in response.collection]
-    else:
-        if likes or tracks or playlists:
-            user = likes or tracks or playlists
-            track = client.get(
-                '/resolve', url='https://soundcloud.com/' + user)
-            user_id = track.id
-            url = '/users/%d/' % user_id
-        elif group:
-            track = client.get(
-                '/resolve', url='https://soundcloud.com/groups/' + group)
-            group_id = track.id
-            url = '/groups/%d/' % group_id
-        elif tags:
-            url = '/'
-        end = '%s%s' % (url, method)
-        response = client.get(end, **opts)
-        sounds = [
-            sound.obj for sound in response.collection
-        ]
+        load([
+            track.track for track in response.collection])
+        return
 
-    for i, sound in enumerate(sounds):
-        print("%d Loading %s..." % (i, sound['title']))
-        call(['mpc', '-h', mpd, 'load',
-              'soundcloud://url/%s' % sound['permalink_url']])
+    if likes or tracks or playlists:
+        user = likes or tracks or playlists
+        track = client.get(
+            '/resolve', url='https://soundcloud.com/' + user)
+        user_id = track.id
+        url = '/users/%d/' % user_id
+    elif group:
+        track = client.get(
+            '/resolve', url='https://soundcloud.com/groups/' + group)
+        group_id = track.id
+        url = '/groups/%d/' % group_id
+    elif tags:
+        url = '/'
+    end = '%s%s' % (url, method)
+    response = client.get(end, **opts)
+    load([
+        sound.obj for sound in response.collection
+    ])
+
 
 if __name__ == '__main__':
     run(sc_load)
