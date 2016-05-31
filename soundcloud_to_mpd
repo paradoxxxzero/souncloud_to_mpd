@@ -57,14 +57,21 @@ def sc_load(
         return
 
     if likes or tracks or playlists:
-        user = likes or tracks or playlists
-        track = client.get(
-            '/resolve', url='https://soundcloud.com/' + user)
+        resolve_url = likes or tracks or playlists
+        base_url = 'https://soundcloud.com/'
+        if not resolve_url.startswith(base_url):
+            resolve_url = base_url + resolve_url
+
+        track = client.get('/resolve', url=resolve_url)
         user_id = track.id
         url = '/users/%d/' % user_id
     elif group:
-        track = client.get(
-            '/resolve', url='https://soundcloud.com/groups/' + group)
+        resolve_url = group
+        base_url = 'https://soundcloud.com/groups/'
+        if not resolve_url.startswith(base_url):
+            resolve_url = base_url + resolve_url
+
+        track = client.get('/resolve', url=resolve_url)
         group_id = track.id
         url = '/groups/%d/' % group_id
     elif tags:
