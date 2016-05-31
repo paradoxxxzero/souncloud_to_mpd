@@ -1,4 +1,4 @@
-# souncloud_to_mpd
+# soundcloud_to_mpd
 Load soundcloud sounds into a mpd instance:
 
 ```bash
